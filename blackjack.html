@@ -198,7 +198,7 @@
                 break;
               default: // no need to change 'displayCardVal'
             }
-            return (displayCardVal);
+            return displayCardVal;
           }
           
           function calcTotal(player) {
@@ -216,7 +216,7 @@
 
             // if player has an ace(1) and adding 10 wont bust them - show possible total in brackets
             if (hasHighAce && total + 10 <= 21) {
-              player.aceTotal = total + 10;
+              player.aceTotal = total + 10; // aceTotal is total if valid
               aceDisplay = "(" + player.aceTotal + ")";
             } else { // we end check against aceTotal so set it to 'total' if no ace is present 
               player.aceTotal = total;
@@ -331,12 +331,6 @@
       }
 
     })(window);
-
-    for (var property in BlackJack) {
-      if (BlackJack.hasOwnProperty(property)) {
-        console.log(property + " : " + BlackJack[property]);
-      }
-    }
 
   </script>
 
