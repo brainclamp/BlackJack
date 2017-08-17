@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+
+	<title>Black Jack</title>
+	<meta name="description" content="a BlackJack game in Vanilla JS">
+	<meta name="author" content="M Gilgallon">
+
+	<!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+  	<![endif]-->
+
+  <style>
+    html,
+    body {
+      height: 100%;
+      font: 16px sans-serif;
+    }
+    
+    #cardTable {
+      background-color: forestgreen;
+      width: 95%;
+      height: 600px;
+      margin: auto;
+      position: relative;
+      text-align: center;
+      font-size: 3em;
+      color: white;
+    }
+    
+    .hand {
+      position: absolute;
+      width: 100%;
+      height: 100px;
+      font-size: .9em;
+    }
+	
+    .total {
+      position: absolute;
+      left: 50%;
+      width: 140px;
+      height: 60px;
+      margin-left: -70px;
+      background-color: red;
+    }
+	
+    #options {
+      position: absolute;
+      top: 50%;
+      width: 100%;
+      height: 60px;
+      margin-top: -30px;
+    }
+	
+    .card {
+      display: inline-block;
+      width: 80px;
+      height: 100px;
+      background-color: white;
+      color: red;
+      border: 1px solid #000;
+      border-radius: 5px;
+      line-height: 100px;
+      vertical-align: middle;
+    }
+	
+    .black {
+      color: black;
+    }
+
+    button {
+      font-size: .8em;
+    }
+
+    button,
+    .card {
+      margin-right: 20px;
+    }
+
+    #banksHand {
+      top: 2%;
+    }
+
+    #puntersHand {
+      bottom: 2%;
+    }
+
+    #banksTotal {
+      top: 25%;
+    }
+
+    #puntersTotal {
+      bottom: 25%;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div id="cardTable">
+    <div id="banksHand" class="hand"></div>
+    <div id="banksTotal" class="total"></div>
+    <div id="options"></div>
+    <div id="puntersHand" class="hand"></div>
+    <div id="puntersTotal" class="total"></div>
+  </div>
+
+  <script>
+    (function(window) { // anonymous closure
+      "use strict";
+
+      function BJ() { // BlackJack constructor
+
+        var bankSpeed = 1.2,
+          punterSpeed = 0.3,
+          deck = [],
+          players = [],
+          bank = {},
+          punter = {},
+          optionsDsply;
+
+        function init() { // initialise deck 
+          var i, s, suits = ["H", "D", "S", "C"], cardsInSuit = 13;
+
+          function deal(numOfCardsEach) { // initial deal
+            while (numOfCardsEach > 0) {
+              for (var i = 0; i < players.length; i++) {
+                dealCard(players[i]);
+          		}
+          		numOfCardsEach--;
+          	}
+          }
+          
+          function showGameButtons() {
+            var stickButton = addButton("STICK"),
+              twistButton = addButton("TWIST");
+            twistButton.onclick = function() {
+              delayedDeal(punter, punterSpeed);
+            };
+            stickButton.onclick = function() {
+              stick();
+            };
+          }
+
+          deck = []; // zero deck
+          bank = {}; punter = {}; // zero players
+          players = [bank, punter]; // load players
+
+          bank.total = punter.total = 0; // zero totals
+          bank.hand = []; // zero hands
+          punter.hand = [];
+
+          bank.handDsply = document.getElementById("banksHand");
+          bank.totalDsply = document.getElementById("banksTotal");
+          punter.handDsply = document.getElementById("puntersHand");
+          punter.totalDsply = document.getElementById("puntersTotal");
+          optionsDsply = document.getElementById("options");
+
+          punter.totalDsply.style.border = "none"; // cancel 'stick' border
+
+          for (s = 0; s < suits.length; s++) { // load the deck - '1C, 8D' etc.
+          	for (i = 1; i <= cardsInSuit; i++) {
+          		deck.push(i.toString() + suits[s]);
+          	}
+          }
+
+          deal(2);
+          showGameButtons();
+          calcTotalResult(punter);
+        }
+
+        function dealCard(player) {
+          var randIndex = randomDeckIndex(deck), // get random card
+            cardShape = document.createElement("div"), // create a 'card div'
+            suitLetter = deck[randIndex].substring(deck[randIndex].length - 1);
+
+          function randomDeckIndex(deck) { // returns a random index from a deck..
+            return Math.floor(Math.random() * deck.length);
+          }
+
+          function toCardDisplayValue(cardVal) { // change ace & pic number values to 'letters'
+            var displayCardVal = parseInt(cardVal, 10);
+            switch (displayCardVal) {
+              case 1:
+                displayCardVal = "A";
+                break;
+              case 11:
+                displayCardVal = "J";
+                break;
+              case 12:
+                displayCardVal = "Q";
+                break;
+              case 13:
+                displayCardVal = "K";
+                break;
+              default: // no need to change 'displayCardVal'
+            }
+            return (displayCardVal);
+          }
+          
+          function calcTotal(player) {
+            var i, numFrmCardVal, total = 0,
+              hasHighAce = false, aceDisplay = '';
+
+            for (i = 0; i < player.hand.length; i++) { // loop all cards in player hand
+              numFrmCardVal = parseInt(player.hand[i], 10); // get the integer from the string
+              total += (numFrmCardVal > 10) ? 10 : numFrmCardVal; // picture cards count as 10
+              if (numFrmCardVal === 1) { // if ace
+                hasHighAce = true;
+              }
+            }
+            player.total = total;
+
+            // if player has an ace(1) and adding 10 wont bust them - show possible total in brackets
+            if (hasHighAce && total + 10 <= 21) {
+              player.aceTotal = total + 10;
+              aceDisplay = "(" + player.aceTotal + ")";
+            } else { // we end check against aceTotal so set it to 'total' if no ace is present 
+              player.aceTotal = total;
+            }
+            player.totalDsply.innerHTML = player.total + aceDisplay;
+          }
+
+          cardShape.innerHTML = toCardDisplayValue(deck[randIndex]) + suitLetter;
+          cardShape.className = "card";
+          if (suitLetter === "S" || suitLetter === "C") {
+            cardShape.className += " black";
+          }
+          player.handDsply.appendChild(cardShape);
+          player.hand.push(deck[randIndex]); // push card into hand
+          deck.splice(randIndex, 1); // remove card from deck
+          calcTotal(player);
+        }
+
+        function delayedDeal(player, delay) {
+          setTimeout(function() {
+            dealCard(player);
+            calcTotalResult(player);
+          }, delay * 1000);
+        }
+
+        function calcTotalResult(player) { // score check 
+          function showResult(result) {
+            removeButtons();
+            optionsDsply.innerHTML = result;
+          }
+          
+          function again() {
+            var againButton = addButton("AGAIN ?");
+            againButton.onclick = function() {
+              var i, cardsDown, cardsDownLngth;
+              cardsDown = document.getElementsByClassName("card");
+              cardsDownLngth = cardsDown.length; // grab array start length first ->
+              for (i = 0; i < cardsDownLngth; i++) {
+                cardsDown[0].remove();
+              } // removing elements from it!!
+              optionsDsply.innerHTML = '';
+              removeButtons();
+              init();
+            };
+          }
+          
+          if (player === bank) {
+            if (player.aceTotal > 21) {
+              showResult("YOU WIN!");
+              again();
+            } else if (player.aceTotal > punter.aceTotal) {
+              showResult("YOU LOSE!");
+              again();
+            } else if (player.aceTotal === punter.aceTotal) {
+              showResult("IT'S A DRAW!");
+              again();
+            } else {
+              banksGo();
+            }
+          } else { // player is a/the punter
+            if (player.aceTotal > 21) { // BUST
+              showResult("BUST!");
+              again();
+            } else if (player.aceTotal === 21) { // BlackJack - auto stick
+              showResult("BlackJack - Auto Stick");
+              stick();
+            }
+          }
+        }
+
+        function stick() { // punters chooses stick - swap hand
+          removeButtons();
+          punter.totalDsply.style.border = "3px solid #FFF";
+          banksGo();
+        }
+
+        function banksGo() {
+          // important to 'calculateResult' if false - bank may have won before playing!
+          if (bank.aceTotal < punter.aceTotal) {
+            delayedDeal(bank, bankSpeed);
+          } else {
+            calcTotalResult(bank);
+          }
+        }
+
+        // helpers
+        function addButton(text) {
+          var button = document.createElement("button");
+          button.setAttribute("type", "button");
+          button.innerHTML = text;
+          optionsDsply.appendChild(button);
+          return button;
+        }
+
+        function removeButtons() {
+          var i, buttons = document.getElementsByTagName("button"),
+            btnLngth = buttons.length;
+          for (i = 0; i < btnLngth; i++) {
+            buttons[0].remove();
+          }
+        }
+
+        init();
+
+      } // end BJ consructor
+			
+      // define BlackJack Object globally if it doesn't already exist
+      if (typeof BlackJack === "undefined") {
+        window.BlackJack = new BJ();
+      } else {
+        console.error("BJ already exists!");
+      }
+
+    })(window);
+
+    for (var property in BlackJack) {
+      if (BlackJack.hasOwnProperty(property)) {
+        console.log(property + " : " + BlackJack[property]);
+      }
+    }
+
+  </script>
+
+</body>
+
+</html>
